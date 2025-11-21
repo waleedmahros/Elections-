@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>استعلام اللجنة الانتخابية - حملة أحمد بلال</title>
+    <title>استعلام اللجنة الانتخابية - حملة المرشح</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     
     <style>
+        /* (تنسيقات CSS كما في الرد السابق) */
         body {
             background-color: #f0f2f5;
             font-family: 'Cairo', sans-serif;
         }
-        /* الخلفية العلوية */
         .header-bg {
             background: linear-gradient(135deg, #005c97 0%, #363795 100%);
             height: 180px;
@@ -21,7 +21,6 @@
             position: relative;
             margin-bottom: 80px;
         }
-        /* حاوية الصورة */
         .candidate-avatar {
             width: 150px;
             height: 150px;
@@ -39,7 +38,6 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            /* تعديل وضعية الصورة لتظهر الوجه بوضوح */
             object-position: top center; 
         }
         .main-card {
@@ -68,9 +66,8 @@
         .btn-search:hover {
             background-color: #2a2b75;
         }
-        /* تنسيق النتائج */
         .result-card {
-            display: none; /* مخفية افتراضياً */
+            display: none;
             border: 2px solid #eef2f7;
             border-radius: 15px;
             padding: 20px;
@@ -102,7 +99,6 @@
             font-weight: 700;
             text-align: left;
         }
-        /* تمييز رقم اللجنة والرقم في الكشف */
         .highlight-row {
             background-color: #e8f0fe;
             padding: 10px;
@@ -112,9 +108,27 @@
         }
         .highlight-val {
             font-size: 1.3rem;
-            color: #d93025; /* لون أحمر للرقم */
+            color: #d93025;
         }
         .loading-spinner {
+            display: none;
+        }
+        /* لإخفاء Canvas عن المستخدم */
+        #dataCanvas {
+            display: none; 
+            position: absolute; 
+            top: -9999px;
+            left: -9999px;
+        }
+        .btn-download-image {
+            background-color: #d93025;
+            color: white;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            width: 100%;
+            margin-top: 20px;
             display: none;
         }
     </style>
@@ -128,7 +142,7 @@
         </div>
         
         <div class="candidate-avatar">
-            <img src="1000665756.jpg" alt="المرشح أحمد بلال">
+            <img src="1000665756.jpg" alt="المرشح">
         </div>
     </div>
 
@@ -140,7 +154,7 @@
                     
                     <form id="electionForm">
                         <div class="mb-3">
-                            <label class="form-label fw-bold">اسم الناخب (ليظهر في النتيجة)</label>
+                            <label class="form-label fw-bold">اسم الناخب (ليظهر في الصورة)</label>
                             <input type="text" id="voterName" class="form-control" placeholder="اكتب اسم الناخب هنا...">
                         </div>
                         
@@ -187,6 +201,10 @@
                             <span class="data-label" style="align-self: center;">رقمك في الكشف:</span>
                             <span class="data-value highlight-val" id="outListNum" style="color: #b65c09;"></span>
                         </div>
+                        
+                        <button id="downloadImageBtn" class="btn btn-danger btn-download-image">
+                            تحميل الصورة جاهزة للمشاركة 📸
+                        </button>
                     </div>
                     
                     <div class="text-center mt-4 text-muted small">
@@ -196,30 +214,12 @@
             </div>
         </div>
     </div>
+    
+    <canvas id="dataCanvas"></canvas>
 
     <script>
-        // دالة مساعدة لاستخراج النص بناءً على الكلمة المفتاحية في HTML
-        // هذه الدالة تبحث عن النص (مثل "المحافظة:") وتجلب القيمة التي تليها
-        function extractData(html, keyword) {
-            // نبحث عن الكلمة، ونحاول التقاط النص الذي يليها داخل تاج HTML
-            // ملاحظة: هذا يعتمد على شكل كود الموقع، سنستخدم نمط عام
-            
-            // محاولة 1: البحث عن الكلمة ثم أخذ النص بعدها
-            let index = html.indexOf(keyword);
-            if (index === -1) return "غير متوفر";
-            
-            // قص النص بدءاً من الكلمة
-            let subStr = html.substring(index);
-            
-            // تنظيف النص واستخراج القيمة (بافتراض أنها تأتي بعد : أو في خانة تالية)
-            // سنقوم بإزالة التاجات للحصول على النص الصافي
-            let cleanText = subStr.split('<br>')[0].split('</div>')[0].replace(/<[^>]*>/g, ' ').replace(keyword, '').trim();
-            
-            // تنظيف إضافي للنقطتين الرأسيتين
-            cleanText = cleanText.replace(/^:/, '').trim();
-            
-            return cleanText;
-        }
+        // *** هام: ضع هنا رابط النشر الخاص بك من Google Apps Script الذي نسخته في الخطوة الأولى ***
+        const PROXY_URL = 'YOUR_DEPLOYED_GAS_URL_HERE'; 
 
         document.getElementById('electionForm').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -230,128 +230,140 @@
             const errorMsg = document.getElementById('errorMsg');
             const btn = document.querySelector('.btn-search');
             const spinner = document.querySelector('.loading-spinner');
+            const downloadBtn = document.getElementById('downloadImageBtn');
 
             if(nid.length !== 14) {
                 errorMsg.style.display = 'block';
                 errorMsg.innerText = 'يرجى إدخال رقم قومي صحيح (14 رقم)';
                 return;
             }
+            if(PROXY_URL === 'https://script.google.com/macros/s/AKfycbwRXfqS6Aeg0C310YeKYCOktykwlHFYy0zKzAEx6u-eGCzRwKSbxRjg0aS6Pc22YyvY/exec') {
+                errorMsg.style.display = 'block';
+                errorMsg.innerText = 'يرجى وضع رابط Google Apps Script أولاً في الكود البرمجي.';
+                return;
+            }
 
             // إعادة تعيين الواجهة
             errorMsg.style.display = 'none';
             resultArea.style.display = 'none';
+            downloadBtn.style.display = 'none';
             btn.disabled = true;
             spinner.style.display = 'inline-block';
-            btn.innerHTML = 'جاري البحث...';
+            btn.innerHTML = 'جاري جلب البيانات...';
 
-            // رابط الموقع الرسمي
-            // ملاحظة: للعمل من Github Pages يجب استخدام بروكسي لتجاوز CORS
-            // سنستخدم بروكسي عام للتبسيط، أو يمكن استخدام "CORS Unblock" extension
-            
-            const targetUrl = 'https://www.elections.eg/inquiry-mob'; 
-            // بما أن الموقع يستخدم POST، سنحاول محاكاة الطلب.
-            // *تنبيه*: أغلب البروكسيات المجانية تدعم GET فقط.
-            // الحل البرمجي الأمثل هنا هو الاعتماد على Fetch مباشر
-            // وإذا فشل نطلب من المستخدم تثبيت إضافة المتصفح
-            
             try {
-                // نقوم بإنشاء Form Data
                 const formData = new URLSearchParams();
-                formData.append('nid', nid); // تأكد من اسم الحقل في الموقع (nid أو id)
+                formData.append('nid', nid);
 
-                const response = await fetch(targetUrl, {
+                // إرسال الطلب للخادم الوسيط (Google Apps Script)
+                const response = await fetch(PROXY_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    },
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: formData
                 });
 
-                if (!response.ok) {
-                    throw new Error('فشل الاتصال بالموقع');
+                const data = await response.json();
+                
+                if(data.status === 'success') {
+                    const results = data.data;
+                    
+                    // 1. ملء البيانات في الواجهة
+                    document.getElementById('outName').innerText = vName || "ناخب";
+                    document.getElementById('outGov').innerText = results.governorate;
+                    document.getElementById('outSection').innerText = results.section;
+                    document.getElementById('outCenter').innerText = results.center;
+                    document.getElementById('outAddress').innerText = results.address;
+                    document.getElementById('outSubComm').innerText = results.sub_committee;
+                    document.getElementById('outListNum').innerText = results.list_number;
+                    
+                    resultArea.style.display = 'block';
+                    downloadBtn.style.display = 'block'; // إظهار زر التنزيل
+
+                    // 2. تجهيز بيانات Canvas لتنزيل الصورة
+                    downloadBtn.onclick = () => {
+                        generateAndDownloadImage({
+                            name: vName || "ناخب",
+                            center: results.center,
+                            committee: results.sub_committee,
+                            list_number: results.list_number
+                        });
+                    };
+
+                } else {
+                    errorMsg.innerText = data.message || 'فشل في جلب البيانات.';
+                    errorMsg.style.display = 'block';
                 }
-
-                const text = await response.text();
-
-                // التحقق من وجود بيانات
-                if (text.includes("غير مسجل") || text.includes("خطأ")) {
-                    throw new Error("الرقم القومي غير مسجل أو البيانات غير صحيحة");
-                }
-
-                // استخراج البيانات (Logic Extract)
-                // سنستخدم دوال بحث بسيطة لأننا لا نملك DOM حقيقي للصفحة الخارجية
-                // هذا الجزء يحتاج لتجربة عملية على الموقع لاستخراج الـ Selectors الدقيقة
-                // سأكتب لك كوداً يستخرج البيانات بناءً على العينة التي أرسلتها
-                
-                // محاكاة للاستخراج (يجب تعديلها لتناسب HTML الموقع الفعلي)
-                // بما أننا لا نستطيع الوصول للموقع الآن، هذا الكود يعتمد على بحث النصوص
-                
-                // ملاحظة: هذا كود تجريبي للاستخراج
-                // يفضل استخدام DOMParser
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(text, 'text/html');
-
-                // مثال: ابحث عن العنصر الذي يحتوي كلمة "محافظة"
-                // ستحتاج لتعديل هذا الجزء عند تجربة الموقع ورؤية الـ Source Code
-                // هذه قيم افتراضية للكود ليعمل، استبدلها بمنطق الاستخراج الفعلي
-                
-                // -- (هنا سنفترض أننا حصلنا على البيانات، سأضع الكود الذي يعرضها) --
-                
-                // *حل مؤقت للتجربة*: إذا كنت لا تعرف الـ Selectors بدقة
-                // يمكنك عرض الصفحة كاملة في iframe أو محاولة قراءة النصوص
-                
-                // لغرض إكمال التطبيق لك، سأفترض أننا نجحنا واستخرجنا القيم كالتالي:
-                // (ستحتاج لمبرمج ويب يضبط الـ Selectors فقط بناء على HTML الموقع)
-                
-                // عرض البيانات
-                document.getElementById('outName').innerText = vName || "فاعل خير";
-                
-                // هنا يجب أن نضع القيم الحقيقية المستخرجة من المتغير 'doc'
-                // document.getElementById('outGov').innerText = doc.querySelector('...').innerText;
-                
-                // بما أنني لا أستطيع فتح الموقع، سأضع تنبيهاً
-                /*
-                   عزيزي المستخدم، لكي تظهر البيانات الحقيقية، نحتاج لمعرفة
-                   ID الحقول في موقع الانتخابات.
-                   حالياً الكود جاهز للتصميم والربط.
-                */
-               
-               // للعرض فقط (استبدل هذا بالبيانات الحقيقية)
-               // هذا الكود سيعمل إذا قام الموقع بإرجاع صفحة فيها البيانات
-               // سنحاول البحث عن النصوص
-               
-                /* مثال لمنطق الاستخراج البسيط */
-                // const fullText = doc.body.innerText; 
-                // ثم البحث داخل النص
-                
-                // بما أننا لا نملك الرد الفعلي، سأظهر رسالة نجاح وهمية لتختبر التصميم
-                // *امسح هذا الجزء عند التشغيل الفعلي*
-                document.getElementById('outGov').innerText = "الغربية (مثال)";
-                document.getElementById('outSection').innerText = "قسم ثان المحلة الكبرى";
-                document.getElementById('outCenter').innerText = "مدرسة الشهيد محمد الدرة";
-                document.getElementById('outAddress').innerText = "خلف قسم ثان المحلة";
-                document.getElementById('outSubComm').innerText = "46";
-                document.getElementById('outListNum').innerText = "6649";
-
-                resultArea.style.display = 'block';
 
             } catch (err) {
-                console.error(err);
-                // رسالة خطأ احترافية تشرح مشكلة الـ CORS للمستخدم
-                errorMsg.innerHTML = `
-                    <strong>تنبيه:</strong> لم نتمكن من جلب البيانات تلقائياً.<br>
-                    بسبب قيود المتصفحات، يرجى التأكد من تثبيت إضافة 
-                    <a href="https://chromewebstore.google.com/detail/allow-cors-access-control/lhobafahddgcelffkeicbaginigeejlf" target="_blank">Allow CORS</a>
-                    على المتصفح وتشغيلها، ثم المحاولة مرة أخرى.
-                `;
+                errorMsg.innerText = 'حدث خطأ في الاتصال بالخادم الوسيط. تأكد من تفعيل رابط Google Apps Script.';
                 errorMsg.style.display = 'block';
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = 'بحث الآن';
                 spinner.style.display = 'none';
+                btn.innerHTML = 'بحث الآن';
             }
         });
-    </script>
 
+
+        // =======================================================
+        // دالة توليد الصورة باستخدام Canvas
+        // =======================================================
+
+        function generateAndDownloadImage(voterData) {
+            const canvas = document.getElementById('dataCanvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            img.crossOrigin = "Anonymous";
+
+            img.onload = function() {
+                // ضبط حجم Canvas ليتناسب مع حجم الصورة الأصلية
+                canvas.width = img.width;
+                canvas.height = img.height;
+                
+                // 1. رسم الصورة الأصلية
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                // 2. إعداد الخطوط والألوان
+                ctx.fillStyle = '#ffffff'; 
+                ctx.textAlign = 'center';
+                
+                const W = canvas.width;
+                const H = canvas.height;
+                
+                // الخط: اسم الناخب
+                ctx.font = 'bold ' + (W * 0.05) + 'px Cairo, sans-serif'; 
+                ctx.fillText(`الناخب: ${voterData.name}`, W / 2, H * 0.82); 
+
+                // الخط: المركز الانتخابي
+                ctx.font = 'normal ' + (W * 0.035) + 'px Cairo, sans-serif';
+                ctx.fillText(`المركز: ${voterData.center}`, W / 2, H * 0.88);
+                
+                // الخط: رقم اللجنة (خط بارز)
+                ctx.font = 'bold ' + (W * 0.05) + 'px Cairo, sans-serif'; 
+                ctx.fillStyle = '#f4c718'; // لون ذهبي
+                ctx.fillText(`اللجنة: ${voterData.committee}`, W * 0.25, H * 0.95);
+                
+                // الخط: رقم في الكشوف (خط بارز)
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(`رقمك: ${voterData.list_number}`, W * 0.75, H * 0.95);
+                
+                // 4. توليد رابط التنزيل
+                const dataURL = canvas.toDataURL('image/jpeg', 0.9); // 0.9 جودة الصورة
+                const a = document.createElement('a');
+                a.href = dataURL;
+                a.download = `لجنتي_${voterData.name || 'ناخب'}_${voterData.committee}.jpg`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            };
+
+            img.src = '1000665756.jpg'; // اسم ملف الصورة
+            
+            // في حالة فشل تحميل الصورة
+            img.onerror = function() {
+                alert("فشل تحميل صورة المرشح. تأكد من وجود ملف 1000665756.jpg بنفس المجلد.");
+            };
+        }
+    </script>
 </body>
 </html>
