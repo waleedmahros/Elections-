@@ -1,0 +1,9 @@
+{
+  "name": "elections-proxy",
+  "version": "1.0.0",
+  "description": "Vercel serverless function to proxy elections inquiry",
+  "main": "index.js",
+  "dependencies": {
+    "node-fetch": "^2.6.1"
+  }
+}
